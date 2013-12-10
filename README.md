@@ -1,4 +1,4 @@
-MJPG Server
+#MJPG Server
 
 A basic implementation of a MJPG streamer as a Java servlet. MJPG is commonly used to deliver image information from networked cameras via an HTTP stream. The set up of this class allws for dynamic image information that is created in real time to be sent to any tool capable of reading MJPG including several major internet browsers (Safari, Chrome, and Firefox).
 
