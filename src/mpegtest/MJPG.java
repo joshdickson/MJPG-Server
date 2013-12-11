@@ -21,16 +21,10 @@
  */
 package mpegtest;
 
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import javax.imageio.ImageIO;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -59,8 +53,11 @@ import javax.servlet.http.HttpServletResponse;
 @WebServlet("/Display")
 public class MJPG extends HttpServlet {
 	
-	private final List<byte[]> imageByteList;
-	private int currentIndex;
+	private final String image = 
+		  "FFD8FFE000104A46494600010200000100010000FFDB004300080606070605080707"
+		+ "FFD8FFE000104A46494600010200000100010000FFDB004300080606070605080707"
+		+ "FFD8FFE000104A46494600010200000100010000FFDB004300080606070605080707";
+	private final byte[] imageBytes;
        
     /**
      * Constructor
@@ -68,28 +65,7 @@ public class MJPG extends HttpServlet {
      */
     public MJPG() {
         super();
-        
-        // set the index
-        currentIndex = 0;
-        
-        // load images from the user's home directory into the list of image bytes
-        String[] names = {"summer", "fall", "winter", "spring"};
-        imageByteList = new ArrayList<byte[]>(0);
-        
-        for(String name : names) {
-        	try {
-        		File image = new File(System.getProperty("user.home") + File.separator 
-        				+ name + ".jpg");
-        		BufferedImage originalImage = ImageIO.read(image);
-            	ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            	ImageIO.write( originalImage, "jpg", baos );
-            	baos.flush();
-            	imageByteList.add(baos.toByteArray());
-            	baos.close();
-        	} catch (Exception ex) {
-            	System.err.println("There was a problem loading the images.");
-            }
-        }
+        imageBytes = convertHexStringToByteArray(image);
 
     }
 
@@ -109,28 +85,25 @@ public class MJPG extends HttpServlet {
 		// loop over and send the images while the browser is present and listening, then return
 		while(true) {
 			try {
-				// reset the current index if necessary or increment it
-				if(currentIndex > 2) currentIndex = 0;
-				else currentIndex++;
 
 				// write the image and wrapper
 				outputStream.write((
 					"--BoundaryString\r\n" +
 					"Content-type: image/jpeg\r\n" +
 					"Content-Length: " +
-					imageByteList.get(currentIndex).length +
+					imageBytes.length +
 					"\r\n\r\n").getBytes());
-				outputStream.write(imageByteList.get(currentIndex));
+				outputStream.write(imageBytes);
 				outputStream.write("\r\n\r\n".getBytes());
-				outputStream.flush();			      
-
+				outputStream.flush();	
+				
 				// force sleep to not overwhelm the browser, simulate ~20 FPS
 				TimeUnit.MILLISECONDS.sleep(50);
 			}
 			
-			// If there is a problem with the connection (it likely closed), so return
+			// There is a problem with the connection (it likely closed), so close
 			catch (Exception e) {
-				return;
+				System.exit(0);
 			}
 		}
 	}
@@ -144,7 +117,32 @@ public class MJPG extends HttpServlet {
 		
 		// direct post requests to the get method
 		doGet(request, response);
-		
+	}
+	
+	/**
+	 * Create a signed byte from a hexidecimal string
+	 * @param hexString the string to convert
+	 * @return the byte representation of the given string
+	 */
+	public static byte convertHexStringToByte(String hexString) {
+		return new Integer(Integer.parseInt(hexString, 16)).byteValue();
+	}
+	
+	
+	/**
+	 * Create an array of bytes from a long hexidecimal string
+	 * @param hexString the string to convert
+	 * @return the array of bytes representing the string
+	 */
+	public static byte[] convertHexStringToByteArray(String hexString) {
+		int arraySize = hexString.length() / 2;
+		byte[] byteArray = new byte[arraySize];
+		int counter = 0;
+		for(int i = 0; i <= hexString.length() - 2; i += 2) {
+			byteArray[counter] = convertHexStringToByte(hexString.substring(i, i + 2));
+			counter++;
+		}
+		return byteArray;
 	}
 
 }
